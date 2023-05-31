@@ -1,0 +1,1 @@
+mklink \\bin\\Debug\\net7.0\\appsettings.json appsettings.json

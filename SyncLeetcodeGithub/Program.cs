@@ -15,8 +15,6 @@ namespace SyncLeetcodeGithub
     internal class Program
     {
         private static List<SubmissionDetail> submissionDetails;
-        
-
         public static async Task Main(string[] args)
         {
             // Setup LOG

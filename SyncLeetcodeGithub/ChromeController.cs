@@ -8,6 +8,7 @@ using SeleniumExtras.WaitHelpers;
 using SeleniumUndetectedChromeDriver;
 using SyncLeetcodeGithub.Config;
 using SyncLeetcodeGithub.Model;
+using static Quartz.Logging.OperationName;
 
 namespace SyncLeetcodeGithub
 {
@@ -26,9 +27,15 @@ namespace SyncLeetcodeGithub
         public async Task startLeetcodeMonitor(bool useCookie)
         {
             await bypassAuthentication(useCookie);
+
+            (IScheduler scheduler, IJobDetail job) = await createUpdateCookieCronJob("0 0 6/12 ? * * *"); // cronjob to update cookie every 12 hours starting at hour 06
+            await scheduler.TriggerJob(job.Key); // trigger imtermediately
+            
             int countPage = firstPageNotFoundSubmission() - 1;
-            // 
-            await createUpdateCookieCronJob("0 0 6/12 ? * * *"); // update every 12 hours starting at hour 06
+            // start monitor
+            // ..........
+
+
             await Task.Delay(Timeout.Infinite);
         }
 
@@ -74,13 +81,14 @@ namespace SyncLeetcodeGithub
             }
         }
 
-        public async Task createUpdateCookieCronJob(string cronPattern)
+        public async Task<(IScheduler, IJobDetail)> createUpdateCookieCronJob(string cronPattern)
         {
             IScheduler scheduler = await StdSchedulerFactory.GetDefaultScheduler();
             await scheduler.Start();
 
             JobDataMap jobDataMap = new JobDataMap();
-            jobDataMap.Put("UndetectedChromeDriver", driver);
+            jobDataMap.Put("driver", driver);
+            jobDataMap.Put("cookiePath", "leetcode_cookie.json");
 
             IJobDetail job = JobBuilder.Create<CookieUpdater>()
                 .UsingJobData(jobDataMap)
@@ -92,55 +100,14 @@ namespace SyncLeetcodeGithub
                 .Build();
 
             await scheduler.ScheduleJob(job, trigger);
-        }
-
-        public async Task processSubmissionHistory()
-        {
-            bool isCrawlOldSubmissionInMidNight = Convert.ToBoolean(config["crawl_history:run_mid_night"]);
-        }
-
-        public async Task updateSubmission()
-        {
-
-        }
-
-        public void startCommitAndPushGithub()
-        {
-
+            return (scheduler, job);
         }
 
         public int firstPageNotFoundSubmission()
         {
-            int curIndex = 1;
-            int lastIndexFound = 1;
-            WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(5));
+            (int left, int right) = findSegmentContainLastSubmissionPage();
             IWebElement? noMoreSubmissionElement = null;
-            // index cuối cùng của page có data và index đầu tiên của page không có data chính là left và right để tìm nhị phân
-            while (true)
-            {
-                driver.GoToUrl("https://leetcode.com/submissions/#/" + Convert.ToString(curIndex));
-                try
-                {
-                    noMoreSubmissionElement = wait.Until(ExpectedConditions.ElementExists(By.ClassName("placeholder-text")));
-                }
-                catch (Exception) { }
-
-                if (noMoreSubmissionElement != null)
-                {
-                    noMoreSubmissionElement = null;
-                    break;
-                }
-                else
-                {
-                    lastIndexFound = curIndex;
-                    curIndex *= 2;
-                }
-                Task.Delay(TimeSpan.FromSeconds(1)).Wait();
-            }
-
-            // chặt nhị phân giữa lastIndexFound và curIndex
-            int left = lastIndexFound;
-            int right = curIndex - 1;
+            WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(5));
             while (true)
             {
                 int index = (left + right) / 2;
@@ -166,6 +133,53 @@ namespace SyncLeetcodeGithub
             }
 
             return left;
+        }
+
+        // Cần tìm khoảng từ 'left' đến 'right', trong đó 'left' là chỉ số trang cuối cùng CÓ chứa dữ liệu,
+        // và 'right' là chỉ số của trang đầu tiên KHÔNG chứa dữ liệu - 1
+        public (int left,int right) findSegmentContainLastSubmissionPage()
+        {
+            int curIndex = 1;
+            int lastIndexFound = 1;
+            WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(5));
+            IWebElement? noMoreSubmissionElement = null;
+
+            while (true)
+            {
+                driver.GoToUrl("https://leetcode.com/submissions/#/" + Convert.ToString(curIndex));
+                try
+                {
+                    noMoreSubmissionElement = wait.Until(ExpectedConditions.ElementExists(By.ClassName("placeholder-text")));
+                }
+                catch (Exception) { }
+
+                if (noMoreSubmissionElement != null)
+                {
+                    break;
+                }
+                else
+                {
+                    lastIndexFound = curIndex;
+                    curIndex *= 2;
+                }
+                Task.Delay(TimeSpan.FromSeconds(1)).Wait();
+            }
+            return (lastIndexFound, curIndex - 1);
+        }
+
+        public async Task processSubmissionHistory()
+        {
+            bool isCrawlOldSubmissionInMidNight = Convert.ToBoolean(config["crawl_history:run_mid_night"]);
+        }
+
+        public async Task updateSubmission()
+        {
+
+        }
+
+        public void startCommitAndPushGithub()
+        {
+
         }
     }
 }

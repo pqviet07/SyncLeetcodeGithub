@@ -1,33 +1,32 @@
 ﻿using Newtonsoft.Json;
 using Quartz;
 using SeleniumUndetectedChromeDriver;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SyncLeetcodeGithub
 {
     internal class CookieUpdater : IJob
     {
-        private UndetectedChromeDriver driver;
-        public CookieUpdater(UndetectedChromeDriver driver) { 
-            this.driver = driver;
-        }
+        private UndetectedChromeDriver? driver;
+        public string? cookiePath { get; set; }
 
-        public Task Execute(IJobExecutionContext context)
+        public async Task Execute(IJobExecutionContext context)
         {
-            update();
+            JobDataMap dataMap = context.MergedJobDataMap;
+            cookiePath = dataMap.GetString("cookiePath");
+            driver = dataMap["driver"] as UndetectedChromeDriver;
+            if (driver != null && cookiePath != null)
+            {
+                await update();
+            }
         }
 
-        public void update()
+        public async Task update()
         {
             if (driver != null && driver.Url.Contains("leetcode"))
             {
                 var cookies = driver.Manage().Cookies.AllCookies;
                 string cookiesJson = JsonConvert.SerializeObject(cookies, Formatting.Indented);
-                File.WriteAllText("leetcode_cookie.json", cookiesJson);
+                File.WriteAllText(cookiePath!, cookiesJson);
             }
         }
     }

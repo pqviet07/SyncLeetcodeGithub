@@ -1,20 +1,11 @@
-﻿using Quartz.Impl;
-using Quartz;
-using Serilog;
-using SyncLeetcodeGithub.Config;
-using SeleniumUndetectedChromeDriver;
-using OpenQA.Selenium;
-using Microsoft.Extensions.Configuration;
-using System.Collections.ObjectModel;
-using Newtonsoft.Json;
-using OpenQA.Selenium.Chrome;
+﻿using Serilog;
 using SyncLeetcodeGithub.Model;
 
 namespace SyncLeetcodeGithub
 {
     internal class Program
     {
-        private static List<SubmissionDetail> submissionDetails;
+        private static List<SubmissionDetail>? submissionDetails;
         public static async Task Main(string[] args)
         {
             // Setup LOG
@@ -24,7 +15,15 @@ namespace SyncLeetcodeGithub
                 .CreateLogger();
 
             ChromeController chromeController = new ChromeController();
-            await chromeController.startLeetcodeMonitor(true);
+            try
+            {
+                await chromeController.initialize();
+                submissionDetails = await chromeController.downloadLeetcodeSubmissions(useCookie: true);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex.Message);
+            }
         }
     }
 }

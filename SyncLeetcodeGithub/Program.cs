@@ -18,7 +18,8 @@ namespace SyncLeetcodeGithub
             try
             {
                 await chromeController.initialize();
-                submissionDetails = await chromeController.downloadLeetcodeSubmissions(useCookie: true);
+                var response = await chromeController.commitAndPushGithub("test.txt", "first commit");
+                // submissionDetails = await chromeController.downloadLeetcodeSubmissions(useCookie: true);
             }
             catch (Exception ex)
             {

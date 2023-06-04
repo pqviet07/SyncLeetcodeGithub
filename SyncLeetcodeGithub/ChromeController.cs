@@ -4,10 +4,12 @@ using OpenQA.Selenium;
 using OpenQA.Selenium.Support.UI;
 using Quartz;
 using Quartz.Impl;
+using RestSharp;
 using SeleniumExtras.WaitHelpers;
 using SeleniumUndetectedChromeDriver;
 using SyncLeetcodeGithub.Config;
 using SyncLeetcodeGithub.Model;
+using System.Text;
 
 namespace SyncLeetcodeGithub
 {
@@ -22,8 +24,8 @@ namespace SyncLeetcodeGithub
             string driverExecutablePath = new ChromeDriverInstaller().Auto().Result;
             driver = UndetectedChromeDriver.Create(driverExecutablePath: driverExecutablePath);
             if (driver == null) return false;
-            (IScheduler scheduler, IJobDetail job) = await createUpdateCookieCronJob("0 0 6/12 ? * * *"); // cronjob to update cookie every 12 hours starting at hour 06
-            await scheduler.TriggerJob(job.Key); // trigger imtermediately
+            // (IScheduler scheduler, IJobDetail job) = await createUpdateCookieCronJob("0 0 6/12 ? * * *"); // cronjob to update cookie every 12 hours starting at hour 06
+            // await scheduler.TriggerJob(job.Key); // trigger imtermediately
             inited = true;
             return true;
         }
@@ -34,7 +36,7 @@ namespace SyncLeetcodeGithub
             {
                 throw new Exception("ChromeController haven't init yet");
             }
-            
+
             await bypassAuthentication(useCookie);
             int countPage = firstPageNotFoundSubmission() - 1;
             List<SubmissionDetail>? submissionDetails = null;
@@ -44,9 +46,36 @@ namespace SyncLeetcodeGithub
             return submissionDetails;
         }
 
-        public async Task startCommitAndPushGithub()
+        public async Task<RestResponse> commitAndPushGithub(string filePath, string commitMessage)
         {
+            string fileContent = File.ReadAllText(filePath);
+            var encodedContent = Convert.ToBase64String(Encoding.UTF8.GetBytes(fileContent));
 
+            var githubToken = config["github:api_token"];
+            var owner = config["github:owner"];
+            var repo = config["github:repo"];
+            var branchName = config["github:main"];
+            var committerName = config["github:committer:name"];
+            var committerEmail = config["github:committer:email"];
+
+            var client = new RestClient("https://api.github.com");
+            var request = new RestRequest($"/repos/{owner}/{repo}/contents/{filePath}", Method.Put);
+            request.AddHeader("Accept", "application/vnd.github+json");
+            request.AddHeader("Authorization", $"Bearer {githubToken}");
+            request.AddHeader("X-GitHub-Api-Version", "2022-11-28");
+            request.AddJsonBody(new
+            {
+                message = commitMessage,
+                content = encodedContent,
+                branch = branchName,
+                committer = new
+                {
+                    name = committerName,
+                    email = committerEmail
+                }
+            });
+
+            return await client.ExecuteAsync(request);
         }
 
         private async Task bypassAuthentication(bool useCookie)

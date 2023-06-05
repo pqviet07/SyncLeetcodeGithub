@@ -5,7 +5,7 @@ namespace SyncLeetcodeGithub
 {
     internal class Program
     {
-        private static List<SubmissionDetail>? submissionDetails;
+        private static LeetcodeGithubSyncController controller;
         public static async Task Main(string[] args)
         {
             // Setup LOG
@@ -14,12 +14,11 @@ namespace SyncLeetcodeGithub
                 .WriteTo.File("SyncLeetcodeGithub.log")
                 .CreateLogger();
 
-            ChromeController chromeController = new ChromeController();
             try
             {
-                await chromeController.initialize();
-                var response = await chromeController.commitAndPushGithub("test.txt", "first commit");
-                // submissionDetails = await chromeController.downloadLeetcodeSubmissions(useCookie: true);
+                controller = new LeetcodeGithubSyncController();
+                await controller.initialize();
+                await controller.start();
             }
             catch (Exception ex)
             {

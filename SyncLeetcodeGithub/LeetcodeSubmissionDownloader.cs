@@ -17,18 +17,17 @@ namespace SyncLeetcodeGithub
         }
         public async Task<List<SubmissionDetail>?> downloadLeetcodeSubmissions()
         {
-            for (int i = 0; i < 20; i++)
-            {
-                ((IJavaScriptExecutor)driver).ExecuteScript("window.open();");
-            }
-
             int countPage = firstPageNotFoundSubmission() - 1;
             List<SubmissionDetail>? submissionDetails = null;
-            //var tasks = new List<Task<string>>();
-            //for (int i = 1; i <= countPage; i++)
-            //{
-            //    tasks.Add(getListSubmissions);
-            //}
+ 
+            List<string> acceptedSubmissionUrls = new List<string>();
+            for (int i = 1; i <= countPage; i++)
+            {
+                var temp =  getListSubmissions(i);
+                acceptedSubmissionUrls.AddRange(temp);
+                Task.Delay(TimeSpan.FromSeconds(1)).Wait();
+            }
+
             // start download
             // ..........
             return submissionDetails;
@@ -36,49 +35,29 @@ namespace SyncLeetcodeGithub
         private int firstPageNotFoundSubmission()
         {
             (int left, int right) = findSegmentContainLastSubmissionPage();
-            IWebElement? element = null;
-            WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(60));
+            bool flag = false;
             while (true)
             {
                 int index = (left + right) / 2;
                 driver.GoToUrl("https://leetcode.com/submissions/#/" + Convert.ToString(index));
-                if (left == right) break;
-retry1:
-                try
-                {
-                    element = wait.Until((IWebDriver driver) =>
-                    {
-                        var noSubmissionLabel  = driver.FindElement(By.ClassName("placeholder-text"));
-                        var dangerText = driver.FindElement(By.ClassName("text-danger"));
-                        var successText = driver.FindElement(By.ClassName("text-success"));
+                if (left == right) 
+                    break;
 
-                        if (noSubmissionLabel != null) return noSubmissionLabel;
-                        if (dangerText != null) return dangerText;
-                        if (successText != null) return successText;
-                        return null;
-                    });
-                }
-                catch (Exception) { }
-                
-                if (element == null)
-                {
-                    driver.GoToUrl("https://leetcode.com/submissions/#/" + Convert.ToString(index));
-                    goto retry1;
-                }
-                
+                IWebElement? element = waitSubmissionsLoadingAt(index);
                 if (element.GetAttribute("class").Contains("placeholder-text"))
                 {
                     right = index - 1;
+                    flag = false;
                 } 
                 else
                 {
                     left = index + 1;
+                    flag = true;
                 }
-
-                Task.Delay(TimeSpan.FromSeconds(1)).Wait();
             }
 
-            return left;
+            if (flag) return left;
+            return right + 1;
         }
 
         // Cần tìm khoảng từ 'left' đến 'right', trong đó 'left' là chỉ số trang cuối cùng CÓ chứa dữ liệu,
@@ -87,59 +66,10 @@ retry1:
         {
             int curIndex = 1;
             int lastIndexFound = 1;
-            WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(60));
             IWebElement? element = null;
-
             while (true)
             {
-                driver.GoToUrl("https://leetcode.com/submissions/#/" + Convert.ToString(curIndex));
-retry2:               
-                try
-                {
-                    element = wait.Until((IWebDriver driver) =>
-                    {
-                        IWebElement? noSubmissionLabel = null;
-                        IWebElement? dangerText = null;
-                        IWebElement? successText = null;
-                        try
-                            noSubmissionLabel = driver.FindElement(By.ClassName("placeholder-text"));
-                        }
-                        catch (Exception)
-                        {
-
-                        }
-
-                        try
-                        {
-                            dangerText = driver.FindElement(By.ClassName("text-danger"));
-                        }
-                        catch (Exception)
-                        {
-                        }
-
-                        try
-                        {
-                            successText = driver.FindElement(By.ClassName("text-success"));
-                        }
-                        catch (Exception)
-                        {
-                        }
-
-
-                        if (noSubmissionLabel != null) return noSubmissionLabel;
-                        if (dangerText != null) return dangerText;
-                        if (successText != null) return successText;
-                        return null;
-                    });
-                }
-                catch (Exception) { }
-
-                if (element == null)
-                {
-                    driver.GoToUrl("https://leetcode.com/submissions/#/" + Convert.ToString(curIndex));
-                    goto retry2;
-                }
-
+                element = waitSubmissionsLoadingAt(curIndex);
                 if (element.GetAttribute("class").Contains("placeholder-text"))
                 {
                     break;
@@ -149,21 +79,59 @@ retry2:
                     lastIndexFound = curIndex;
                     curIndex *= 2;
                 }
-                Task.Delay(TimeSpan.FromSeconds(1)).Wait();
             }
             return (lastIndexFound, curIndex - 1);
         }
 
-        
-        private async Task<List<string>> getListSubmissions(int index)
+        private IWebElement waitSubmissionsLoadingAt(int index)
+        {
+            IWebElement? element = null;
+            WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(15));
+            while (element == null)
+            {
+                try
+                {
+                    driver.GoToUrl("https://leetcode.com/submissions/#/" + Convert.ToString(index));
+                    element = wait.Until((IWebDriver driver) =>
+                    {
+                        var noSubmissionLabel = driver.FindElements(By.ClassName("placeholder-text")).FirstOrDefault(e => e.Displayed);
+                        var dangerText = driver.FindElements(By.ClassName("text-danger")).FirstOrDefault(e => e.Displayed);
+                        var successText = driver.FindElements(By.ClassName("text-success")).FirstOrDefault(e => e.Displayed);
+                        var elementVisiable = noSubmissionLabel ?? successText ?? dangerText;
+                        return elementVisiable;
+                    });
+                }
+                catch (Exception) { }
+
+            }
+            return element;
+        }
+
+        private List<string> getListSubmissions(int index)
         {
             driver.GoToUrl("https://leetcode.com/submissions/#/" + Convert.ToString(index));
-            var accptedElements = driver.FindElements(By.ClassName("text-success"));
+            IWebElement? element = null;
+            WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(15));
+            while (element == null)
+            {
+                try
+                {
+                    driver.GoToUrl("https://leetcode.com/submissions/#/" + Convert.ToString(index));
+                    element = wait.Until((IWebDriver driver) =>
+                    {
+                        var dangerText = driver.FindElements(By.ClassName("text-danger")).FirstOrDefault(e => e.Displayed);
+                        var successText = driver.FindElements(By.ClassName("text-success")).FirstOrDefault(e => e.Displayed);
+                        var elementVisiable = successText ?? dangerText;
+                        return elementVisiable;
+                    });
+                }
+                catch (Exception) { }
+            }
+            var acceptedElements = driver.FindElements(By.ClassName("text-success"));
             var submissionUrls = new List<string>();
-            foreach (var e in accptedElements)
+            foreach (var e in acceptedElements)
             {
                 submissionUrls.Add(e.GetAttribute("href"));
-                Console.WriteLine(e.GetAttribute("href"));
             }
             return submissionUrls;
         }

@@ -8,13 +8,13 @@ namespace SyncLeetcodeGithub.Model
 {
     internal class SubmissionDetail
     {
-        public long Id { get; set; }
-        public string Name { get; set; }
-        public string Status { get; set; }
-        public string Runtime { get; set; }
-        public string Memory { get; set; }
-        public string RuntimeBeatPercentage { get; set; }
-        public string MemoryBeatPercentage { get; set; }
-        public string Code { get; set; }
+        public string? Id { get; set; }
+        public string? Name { get; set; }
+        public string? Runtime { get; set; }
+        public string? Memory { get; set; }
+        public string? Submited { get; set; }
+        public string? RuntimeBeatPercentage { get; set; }
+        public string? MemoryBeatPercentage { get; set; }
+        public string? Code { get; set; }
     }
 }

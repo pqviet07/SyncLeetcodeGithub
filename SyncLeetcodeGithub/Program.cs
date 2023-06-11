@@ -1,11 +1,10 @@
 ﻿using Serilog;
-using SyncLeetcodeGithub.Model;
 
 namespace SyncLeetcodeGithub
 {
     internal class Program
     {
-        private static LeetcodeGithubSyncController controller;
+        private static LeetGitController controller;
         public static async Task Main(string[] args)
         {
             // Setup LOG
@@ -16,7 +15,7 @@ namespace SyncLeetcodeGithub
 
             try
             {
-                controller = new LeetcodeGithubSyncController();
+                controller = new LeetGitController();
                 await controller.initialize();
                 await controller.start();
             }

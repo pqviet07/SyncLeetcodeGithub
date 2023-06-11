@@ -1,18 +1,17 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using OpenQA.Selenium;
-using OpenQA.Selenium.DevTools.V111.Profiler;
-using OpenQA.Selenium.Support.UI;
 using Quartz;
 using Quartz.Impl;
-using SeleniumExtras.WaitHelpers;
 using SeleniumUndetectedChromeDriver;
 using SyncLeetcodeGithub.Config;
 using SyncLeetcodeGithub.Model;
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace SyncLeetcodeGithub
 {
-    internal class LeetcodeGithubSyncController
+    internal class LeetGitController
     {
         private const string cookieFilePath = "leetcode_cookie.json";
         private IConfigurationRoot config = ConfigHolder.getConfig();
@@ -20,9 +19,9 @@ namespace SyncLeetcodeGithub
         private LeetcodeSubmissionWatcher? submissionWatcher;
         private LeetcodeSubmissionDownloader? submissionDownloader;
         private GithubSubmitter? githubSubmitter;
-        private static List<SubmissionDetail>? submissionDetails;
-
+        private List<SubmissionDetail>? submissionDetails;
         public bool inited { get; set; }
+
         public async Task<bool> initialize()
         {
             config = ConfigHolder.getConfig();
@@ -38,9 +37,37 @@ namespace SyncLeetcodeGithub
 
         public async Task start()
         {
+            if (!inited) return;
             await bypassAuthentication(useCookie: true);
-            await submissionDownloader.downloadLeetcodeSubmissions();
+            submissionDetails = await submissionDownloader!.downloadLeetcodeSubmissions();
+            Comparison<SubmissionDetail> customComparison = (submission1, submission2) =>
+            {
+                int val = submission1.Name!.CompareTo(submission2.Name);
+                if (val == 0)
+                {
+                    string numberString1 = Regex.Match(submission1.Runtime!, @"\d+").Value;
+                    string numberString2 = Regex.Match(submission2.Runtime!, @"\d+").Value;
+                    int runtime1 = int.Parse(numberString1);
+                    int runtime2 = int.Parse(numberString2);
+                    return runtime1 - runtime2;
+                }
+                return val;
+            };
+            var submissionDetailAfterRemoveDup = new List<SubmissionDetail>();
+            if (submissionDetails != null)
+            {
+                submissionDetails.Sort(customComparison);
+                submissionDetailAfterRemoveDup.Add(submissionDetails.First());
+                for (int i = 1; i < submissionDetails?.Count; i++)
+                {
+                    if (submissionDetails[i].Name!.CompareTo(submissionDetails[i - 1].Name) != 0)
+                    {
+                        submissionDetailAfterRemoveDup.Add(submissionDetails[i]);
+                    }
+                }
+            }
         }
+
         private async Task bypassAuthentication(bool useCookie)
         {
             if (useCookie)

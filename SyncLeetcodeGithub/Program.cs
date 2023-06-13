@@ -16,8 +16,8 @@ namespace SyncLeetcodeGithub
             try
             {
                 controller = new LeetGitController();
-                await controller.initialize();
-                await controller.start();
+                controller.initialize().Wait();
+                controller.start();
             }
             catch (Exception ex)
             {

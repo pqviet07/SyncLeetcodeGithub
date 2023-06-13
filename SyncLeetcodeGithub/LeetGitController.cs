@@ -6,7 +6,6 @@ using Quartz.Impl;
 using SeleniumUndetectedChromeDriver;
 using SyncLeetcodeGithub.Config;
 using SyncLeetcodeGithub.Model;
-using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
 namespace SyncLeetcodeGithub
@@ -29,17 +28,18 @@ namespace SyncLeetcodeGithub
             driver = UndetectedChromeDriver.Create(driverExecutablePath: driverExecutablePath);
             if (driver == null) return false;
             submissionDownloader = new LeetcodeSubmissionDownloader(driver);
-            submissionWatcher = new LeetcodeSubmissionWatcher(driver);
-            (IScheduler scheduler, IJobDetail job) = await createUpdateCookieCronJob("0 0 6/12 ? * * *"); // cronjob to update cookie every 12 hours starting at hour 06
+            submissionWatcher = new LeetcodeSubmissionWatcher(driver, submissionDetails);
+            await createUpdateCookieCronJob("0 0 6/12 ? * * *"); // cronjob to update cookie every 12 hours starting at hour 06
+            await submissionWatcher.createWatcherCronJob("0 0/5 0 ? * * *");
             inited = true;
             return true;
         }
 
-        public async Task start()
+        public void start()
         {
             if (!inited) return;
-            await bypassAuthentication(useCookie: true);
-            submissionDetails = await submissionDownloader!.downloadLeetcodeSubmissions();
+            bypassAuthentication(useCookie: true);
+            submissionDetails = submissionDownloader!.downloadLeetcodeSubmissions();
             Comparison<SubmissionDetail> customComparison = (submission1, submission2) =>
             {
                 int val = submission1.Name!.CompareTo(submission2.Name);
@@ -68,7 +68,7 @@ namespace SyncLeetcodeGithub
             }
         }
 
-        private async Task bypassAuthentication(bool useCookie)
+        private void bypassAuthentication(bool useCookie)
         {
             if (useCookie)
             {
@@ -86,12 +86,12 @@ namespace SyncLeetcodeGithub
                 IWebElement passwordElement = driver.FindElement(By.Id("id_password"));
                 passwordElement.SendKeys(config["leetcode:password"]);
 
-                await Task.Delay(TimeSpan.FromSeconds(5));
+                Task.Delay(TimeSpan.FromSeconds(5)).Wait();
                 IWebElement signinElement = driver.FindElement(By.Id("signin_btn"));
                 signinElement.Click();
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(5));
+           Task.Delay(TimeSpan.FromSeconds(5)).Wait();
         }
 
         private void addCookiesToBrowser(string jsonFilePath)

@@ -13,6 +13,7 @@ namespace SyncLeetcodeGithub
         private const int TIMEOUT = 15; // second
         private UndetectedChromeDriver driver;
         private WaitUtility waitUtility;
+        private int totalPage;
 
         public LeetcodeSubmissionDownloader(UndetectedChromeDriver driver)
         {
@@ -20,24 +21,11 @@ namespace SyncLeetcodeGithub
             waitUtility = new WaitUtility(driver);
         }
 
-        public async Task<List<SubmissionDetail>?> downloadLeetcodeSubmissions()
+        public List<SubmissionDetail>? downloadLeetcodeSubmissions()
         {
-            int countPage = firstPageNotFoundSubmission() - 1;
-            var submissionDetails = new List<SubmissionDetail>();
-            var acceptedSubmissionUrls = new List<string>();
-            for (int index = 1; index <= countPage; index++)
-            {
-                var list = getListSubmissionUrlAt(indexPage: index);
-                acceptedSubmissionUrls.AddRange(list);
-                Task.Delay(TimeSpan.FromSeconds(3)).Wait();
-            }
-
-            for (int i = 0; i < acceptedSubmissionUrls.Count; i++)
-            {
-                var submissionDetail = getStatsOfSubmission(acceptedSubmissionUrls[i]);
-                submissionDetails.Add(submissionDetail);
-            }
-
+            totalPage = firstPageNotFoundSubmission() - 1;
+            var acceptedSubmissionUrls = getAllUrlOfAcceptedSubmission();
+            var submissionDetails = getAllAcceptedSubmissionDetail(acceptedSubmissionUrls);
             return submissionDetails;
         }
 
@@ -105,7 +93,19 @@ namespace SyncLeetcodeGithub
             return waitUtility.waitOneOfElement(targetUrl, TIMEOUT, elementsToFind.ElementDict, cancellationToken);
         }
 
-        private List<string> getListSubmissionUrlAt(int indexPage)
+        private List<string> getAllUrlOfAcceptedSubmission()
+        {
+            var acceptedSubmissionUrls = new List<string>();
+            for (int index = 1; index <= totalPage; index++)
+            {
+                var list = getUrlsAcceptedSubmissionAt(indexPage: index);
+                acceptedSubmissionUrls.AddRange(list);
+                Task.Delay(TimeSpan.FromSeconds(3)).Wait();
+            }
+            return acceptedSubmissionUrls;
+        }
+
+        private List<string> getUrlsAcceptedSubmissionAt(int indexPage)
         {
             string targetUrl = ORIGIN_SUBMISSION_URL + Convert.ToString(indexPage);
             CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
@@ -123,7 +123,18 @@ namespace SyncLeetcodeGithub
             return submissionUrls;
         }
 
-        private SubmissionDetail getStatsOfSubmission(string submissionUrl)
+        private List<SubmissionDetail> getAllAcceptedSubmissionDetail(List<string> acceptedSubmissionUrls)
+        {
+            var submissionDetails = new List<SubmissionDetail>();
+            for (int i = 0; i < acceptedSubmissionUrls.Count; i++)
+            {
+                var submissionDetail = getStatsOfSubmissionAt(acceptedSubmissionUrls[i]);
+                submissionDetails.Add(submissionDetail);
+            }
+            return submissionDetails;
+        }
+
+        private SubmissionDetail getStatsOfSubmissionAt(string submissionUrl)
         {
             var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;

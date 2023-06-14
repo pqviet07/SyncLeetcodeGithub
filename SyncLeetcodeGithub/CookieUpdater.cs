@@ -12,8 +12,8 @@ namespace SyncLeetcodeGithub
         public async Task Execute(IJobExecutionContext context)
         {
             JobDataMap dataMap = context.MergedJobDataMap;
-            cookiePath = dataMap.GetString("cookiePath");
-            driver = dataMap["driver"] as UndetectedChromeDriver;
+            cookiePath = dataMap.GetString("CookiePath");
+            driver = dataMap["Driver"] as UndetectedChromeDriver;
             if (driver != null && cookiePath != null)
             {
                 await update();

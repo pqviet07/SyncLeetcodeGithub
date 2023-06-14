@@ -22,16 +22,16 @@ namespace SyncLeetcodeGithub
             await scheduler.Start();
 
             JobDataMap jobDataMap = new JobDataMap();
-            jobDataMap.Put("driver", driver!);
+            jobDataMap.Put("Driver", driver!);
             jobDataMap.Put("ListSubmissionDetail", submissionDetails);
 
             IJobDetail job = JobBuilder.Create<SubmissionWatcherJob>()
-                .Build();
+                                       .Build();
 
             ITrigger trigger = TriggerBuilder.Create()
-                .WithCronSchedule(cronPattern)
-                .StartNow()
-                .Build();
+                                             .WithCronSchedule(cronPattern)
+                                             .StartNow()
+                                             .Build();
 
             await scheduler.ScheduleJob(job, trigger);
             return (scheduler, job);
@@ -46,12 +46,11 @@ namespace SyncLeetcodeGithub
             public async Task Execute(IJobExecutionContext context)
             {
                 JobDataMap dataMap = context.MergedJobDataMap;
-                driver = dataMap["driver"] as UndetectedChromeDriver;
+                driver = dataMap["Driver"] as UndetectedChromeDriver;
                 submissionDetails = dataMap["ListSubmissionDetail"] as List<SubmissionDetail>;
                 if (driver != null)
                 {
                     driver.GoToUrl(FIRST_SUBMISSION_PAGE_URL);
-                    
                 }
             }
         }

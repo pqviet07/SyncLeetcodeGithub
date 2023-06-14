@@ -116,17 +116,17 @@ namespace SyncLeetcodeGithub
             await scheduler.Start();
 
             JobDataMap jobDataMap = new JobDataMap();
-            jobDataMap.Put("driver", driver!);
-            jobDataMap.Put("cookiePath", cookieFilePath);
+            jobDataMap.Put("Driver", driver!);
+            jobDataMap.Put("CookiePath", cookieFilePath);
 
             IJobDetail job = JobBuilder.Create<CookieUpdater>()
-                .UsingJobData(jobDataMap)
-                .Build();
+                                       .UsingJobData(jobDataMap)
+                                       .Build();
 
             ITrigger trigger = TriggerBuilder.Create()
-                .WithCronSchedule(cronPattern)
-                .StartNow()
-                .Build();
+                                             .WithCronSchedule(cronPattern)
+                                             .StartNow()
+                                             .Build();
 
             await scheduler.ScheduleJob(job, trigger);
             return (scheduler, job);
